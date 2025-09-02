@@ -4,3 +4,4 @@ env
 descargas_cnbv/
 .vscode
 .streamlit/
+launch_app.bat  

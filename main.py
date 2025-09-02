@@ -1,43 +1,66 @@
 import streamlit as st
-from datetime import datetime
-import cnbv_downloader
+import os
+import glob
+import cnbv_downloader 
+from data_processor import process_all_files
 
-# Diccionario para mapear los nombres de los meses a sus números
-MONTHS_ES = {
-    "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6,
-    "Julio": 7, "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12,
-}
+# --- Configuración de la página de Streamlit ---
+st.set_page_config(
+    page_title="Descargador de Boletines de la CNBV",
+    page_icon="🤖",
+    layout="centered"
+)
 
-def main():
-    """
-    Función principal de la interfaz de Streamlit.
-    """
-    st.title("Descargador de Boletines de la CNBV")
-    st.markdown("Selecciona el año y el mes del boletín de Banca Múltiple que deseas descargar.")
+# Título de la aplicación
+st.title('Descargador y Procesador de Boletines CNBV')
 
-    # Obtener el año y mes actuales para los valores por defecto
-    current_year = datetime.now().year
-    current_month_name = list(MONTHS_ES.keys())[datetime.now().month - 1]
+# Descripción
+st.markdown("""
+Esta aplicación te permite descargar los boletines de Banca Múltiple de la CNBV y procesar sus datos.
+""")
 
-    # Widgets para la selección del usuario
-    col1, col2 = st.columns(2)
-    with col1:
-        selected_year = st.number_input("Año", min_value=2010, max_value=current_year, value=current_year, step=1)
+# --- 1. SECCIÓN DE DESCARGA ---
+st.header("1. Descargar Boletines")
+
+# Widgets para seleccionar el año y el mes
+col1, col2 = st.columns(2)
+with col1:
+    selected_year = st.selectbox(
+        "Año",
+        list(range(2025, 2018, -1)) # Desde 2025 hasta 2019
+    )
+with col2:
+    selected_month = st.selectbox(
+        "Mes",
+        list(range(1, 13)),
+        format_func=lambda x: f"{x:02d}" # Formato de 2 dígitos (ej. 01, 02)
+    )
+
+if st.button('Descargar Boletín', use_container_width=True):
+    # Llama a la función de descarga
+    with st.spinner(f"Descargando boletín para {selected_month:02d}/{selected_year}..."):
+        cnbv_downloader(selected_year, selected_month)
+    st.success("¡Descarga completada!")
+
+# --- 2. SECCIÓN DE PROCESAMIENTO ---
+st.header("2. Procesar Archivos")
+
+# Checa si hay archivos descargados
+download_dir = 'descargas_cnbv'
+if not os.path.exists(download_dir):
+    os.makedirs(download_dir)
+
+excel_files = glob.glob(os.path.join(download_dir, '*.xlsx'))
+
+if not excel_files:
+    st.info("No hay archivos Excel descargados para procesar. Por favor, descarga uno primero.")
+else:
+    st.markdown(f"**Archivos listos para procesar:**")
+    for file in excel_files:
+        st.write(f"- {os.path.basename(file)}")
     
-    with col2:
-        selected_month_name = st.selectbox("Mes", options=list(MONTHS_ES.keys()), index=list(MONTHS_ES.keys()).index(current_month_name))
-        selected_month = MONTHS_ES[selected_month_name]
-
-    st.markdown("---")
-
-    if st.button("Descargar Boletín"):
-        st.info(f"Iniciando descarga del boletín de {selected_month_name} de {selected_year}...")
-        try:
-            cnbv_downloader.download_file(selected_year, selected_month)
-            st.success(f"✅ ¡Descarga completa! Archivo guardado en la carpeta **./descargas_cnbv**")
-        except Exception as e:
-            st.error(f"Ocurrió un error durante la descarga: {e}")
-            st.info("Es posible que no haya un boletín para el mes y año seleccionados. Por favor, intente con otra fecha.")
-
-if __name__ == "__main__":
-    main()
+    # Botón para procesar los archivos
+    if st.button('Procesar Datos', use_container_width=True):
+        with st.spinner("Procesando y consolidando datos..."):
+            process_all_files(excel_files)
+        st.success("¡Procesamiento completado! Revisa la carpeta raíz para los nuevos archivos.")
