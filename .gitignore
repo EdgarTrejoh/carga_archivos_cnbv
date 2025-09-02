@@ -3,3 +3,4 @@ __pycache__/
 env
 descargas_cnbv/
 .vscode
+.streamlit/
