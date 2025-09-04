@@ -88,7 +88,7 @@ def extract_data_from_excel(filepath, sheet, usecols, names):
         df = pd.read_excel(
             filepath,
             sheet_name=sheet,
-            header=4,
+            header=5,
             usecols=','.join(usecols),
             # Eliminamos index_col para no causar errores con valores nulos
             names=names,
@@ -103,21 +103,31 @@ def clean_dataframe(df):
     """
     Limpia el DataFrame eliminando filas no deseadas de la columna 'Entidad'
     y reemplazando valores no numéricos en las columnas de datos por cero.
+    Mantiene y renombra la fila 'Sistema'.
     Args:
         df (pd.DataFrame): El DataFrame a limpiar.
     Returns:
         pd.DataFrame: El DataFrame limpio.
     """
-    # 📝 Elimina filas donde 'Entidad' está nulo o vacío
-    df = df.dropna(subset=['Entidad']).copy()
+    # 1. Identifica la fila que contiene el total del sistema.
+    sistema_row_mask = df['Entidad'].astype(str).str.contains(r'^Sistema\s+\*/', regex=True, na=False)
+    sistema_df = df[sistema_row_mask].copy()
 
-    # 📝 Convierte la columna 'Entidad' a tipo string y limpia espacios
-    df['Entidad'] = df['Entidad'].astype(str).str.strip()
+    # 2. Renombra la entidad del sistema para que sea consistente
+    if not sistema_df.empty:
+        sistema_df['Entidad'] = 'Sistema'
 
     # 📝 Elimina las filas que contienen valores no deseados en la columna 'Entidad'
     # Esto manejará encabezados duplicados, notas, y totales
     keywords_to_remove = ['CONCEPTO', 'NOTAS', 'TOTAL', 'FUENTE', 'Elaborado por', 'CNBV', 'Sistema']
     df = df[~df['Entidad'].str.contains('|'.join(keywords_to_remove), case=False, na=False)]
+
+    # 4. Elimina la fila del sistema del DataFrame principal para evitar duplicados
+    df = df[~sistema_row_mask]
+
+    # 5. Combina el DataFrame limpio con la fila del sistema
+    if not sistema_df.empty:
+        df = pd.concat([df, sistema_df], ignore_index=True)
     
     # 💡 Convertimos las columnas de datos a tipo numérico y reemplazamos los
     # valores no numéricos (ahora NaN) por 0.
@@ -128,6 +138,9 @@ def clean_dataframe(df):
     
     # Reemplazamos todos los valores NaN (que solían ser "n.a." o "-") por 0
     df = df.fillna(0)
+    
+    # 📝 Convierte la columna 'Entidad' a tipo string y limpia espacios
+    df['Entidad'] = df['Entidad'].astype(str).str.strip()
     
     return df
 
