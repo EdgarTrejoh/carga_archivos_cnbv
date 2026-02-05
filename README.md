@@ -73,7 +73,7 @@ BASE_URL = "inserta_liga"
 1. Activa tu entorno y corre Streamlit:
 
 ```bash
-streamlit run app.py
+streamlit run main.py
 ```
 
 2. En el navegador:
