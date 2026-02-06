@@ -1,2 +1,4 @@
 Streamlit
 requests
+sqlalchemy
+openpyxl
